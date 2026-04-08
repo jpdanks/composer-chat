@@ -282,7 +282,7 @@ function ComposerBar({ view, isStreaming, onSend, onStop, onExpand, onCollapse, 
               ) : (
                 <>
                   <Button size="icon" variant="ghost" className="h-10 w-10 rounded-full text-muted-foreground hover:text-foreground hover:bg-foreground/10"
-                    onClick={(e) => { e.stopPropagation(); isChat ? onVoice() : onExpand(); }}>
+                    onClick={(e) => { e.stopPropagation(); onVoice(); }}>
                     <Mic className="size-6" />
                   </Button>
                   {isChat && (
