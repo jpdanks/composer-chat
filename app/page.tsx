@@ -204,40 +204,31 @@ function ComposerBar({ view, isStreaming, onSend, onStop, onExpand, onCollapse, 
               transition: "opacity 300ms ease-out",
             }}
           />
-          {/* Textarea — animates in/out via grid rows */}
+          {/* Expanded content — animates in/out via grid rows */}
           <div
             className="grid transition-[grid-template-rows,opacity] duration-300 ease-in-out"
             style={{
-              gridTemplateRows: isChat ? "1fr" : "0fr",
-              opacity: isChat ? 1 : 0,
+              gridTemplateRows: isExpanded ? "1fr" : "0fr",
+              opacity: isExpanded ? 1 : 0,
             }}
           >
             <div className="overflow-hidden">
-              <Textarea
-                ref={textareaRef}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="I want to..."
-                rows={1}
-                style={{ fontSize: "22px" }}
-                className="min-h-0 max-h-48 resize-none border-0 bg-transparent p-0 leading-snug shadow-none focus-visible:ring-0 placeholder:text-muted-foreground/50"
-              />
-              <div className="h-3" />
-            </div>
-          </div>
-
-          {/* Voice — animates in/out via grid rows */}
-          <div
-            className="grid transition-[grid-template-rows,opacity] duration-300 ease-in-out"
-            style={{
-              gridTemplateRows: isVoice ? "1fr" : "0fr",
-              opacity: isVoice ? 1 : 0,
-            }}
-          >
-            <div className="overflow-hidden">
-              {/* Placeholder text */}
-              <p className="text-muted-foreground/50" style={{ fontSize: "22px" }}>I want to...</p>
+              <div className="min-h-[34px]">
+                {isVoice ? (
+                  <p className="text-muted-foreground/50 leading-snug" style={{ fontSize: "22px" }}>I want to...</p>
+                ) : (
+                  <Textarea
+                    ref={textareaRef}
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    placeholder="I want to..."
+                    rows={1}
+                    style={{ fontSize: "22px" }}
+                    className="min-h-0 max-h-48 resize-none border-0 bg-transparent p-0 leading-snug shadow-none focus-visible:ring-0 placeholder:text-muted-foreground/50"
+                  />
+                )}
+              </div>
               <div className="h-3" />
             </div>
           </div>
@@ -246,7 +237,7 @@ function ComposerBar({ view, isStreaming, onSend, onStop, onExpand, onCollapse, 
           <div className="flex items-center gap-2">
             {isVoice ? (
               <Button size="icon" variant="ghost" className="h-10 w-10 shrink-0 rounded-full bg-foreground/10 hover:bg-foreground/20 text-foreground"
-                onClick={(e) => { e.stopPropagation(); onCollapse(); }}>
+                onClick={(e) => { e.stopPropagation(); onExpand(); }}>
                 <Square className="size-4 fill-current" />
               </Button>
             ) : (
@@ -274,7 +265,7 @@ function ComposerBar({ view, isStreaming, onSend, onStop, onExpand, onCollapse, 
               style={{ paddingRight: isChat && !isStreaming && input.trim() ? "48px" : "0px" }}
             >
               {isVoice && (
-                <span className="text-sm text-muted-foreground tabular-nums">
+                <span className="text-sm text-muted-foreground tabular-nums mr-2">
                   <VoiceTimer />
                 </span>
               )}
@@ -285,7 +276,7 @@ function ComposerBar({ view, isStreaming, onSend, onStop, onExpand, onCollapse, 
                 </Button>
               ) : isVoice ? (
                 <Button size="icon" className="h-10 w-10 rounded-full"
-                  onClick={(e) => { e.stopPropagation(); onCollapse(); }}>
+                  onClick={(e) => { e.stopPropagation(); onExpand(); }}>
                   <ArrowUp className="size-6" />
                 </Button>
               ) : (
@@ -318,29 +309,40 @@ function ComposerBar({ view, isStreaming, onSend, onStop, onExpand, onCollapse, 
 // ─── Waveform ─────────────────────────────────────────────────────────────────
 
 function Waveform() {
-  const barCount = 48;
+  const [bars, setBars] = useState<number[]>([]);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setBars((prev) => {
+        const next = [...prev, Math.random() * 0.8 + 0.15];
+        const maxBars = containerRef.current ? Math.floor(containerRef.current.clientWidth / 4) : 80;
+        return next.slice(-maxBars);
+      });
+    }, 60);
+    return () => clearInterval(interval);
+  }, []);
+
   return (
-    <div className="flex items-center gap-[2px] w-full h-8">
-      {Array.from({ length: barCount }).map((_, i) => {
-        const baseHeight = Math.random() * 0.6 + 0.1;
+    <div ref={containerRef} className="flex items-center justify-end gap-[2px] w-full h-8 overflow-hidden">
+      {bars.map((h, i) => {
+        const fadeZone = 20;
+        const maxBars = containerRef.current ? Math.floor(containerRef.current.clientWidth / 4) : 80;
+        const visibleStart = Math.max(bars.length - maxBars, 0);
+        const distFromLeft = i - visibleStart;
+        const distFromRight = bars.length - 1 - i;
+        const fadeLeft = distFromLeft < 10 ? Math.max(distFromLeft / 10, 0) : 1;
+        const fadeRight = distFromRight < 10 ? Math.max(distFromRight / 10, 0) : 1;
+        const fade = Math.min(fadeLeft, fadeRight);
+        const height = 2 + (h * 100 - 2) * fade;
         return (
           <div
             key={i}
-            className="flex-1 rounded-full bg-foreground/70"
-            style={{
-              height: `${baseHeight * 100}%`,
-              animation: `waveform 1.2s ease-in-out ${i * 0.05}s infinite alternate`,
-            }}
+            className="w-[2px] shrink-0 rounded-full bg-foreground/70"
+            style={{ height: `${height}%`, opacity: 0.3 + 0.7 * fade }}
           />
         );
       })}
-      <style jsx>{`
-        @keyframes waveform {
-          0% { transform: scaleY(0.3); }
-          50% { transform: scaleY(1); }
-          100% { transform: scaleY(0.3); }
-        }
-      `}</style>
     </div>
   );
 }
